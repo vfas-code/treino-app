@@ -1,11 +1,11 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useMemo, useState } from 'react'
-import { Confirm } from '../components/Sheet'
-import { db } from '../db'
-import type { Session, SetLog } from '../types'
+import { Confirm, Sheet } from '../components/Sheet'
+import { db, today, uid } from '../db'
+import type { Measure, Session, SetLog } from '../types'
 
 export default function History() {
-  const [tab, setTab] = useState<'treinos' | 'evolucao'>('treinos')
+  const [tab, setTab] = useState<'treinos' | 'evolucao' | 'medidas'>('treinos')
   const sessions = useLiveQuery(() => db.sessions.orderBy('startedAt').reverse().toArray(), [])
   const logs = useLiveQuery(() => db.logs.toArray(), [])
 
@@ -17,13 +17,18 @@ export default function History() {
           Treinos
         </button>
         <button className={tab === 'evolucao' ? 'active' : ''} onClick={() => setTab('evolucao')}>
-          Evolução de carga
+          Evolução
+        </button>
+        <button className={tab === 'medidas' ? 'active' : ''} onClick={() => setTab('medidas')}>
+          Medidas
         </button>
       </div>
       {tab === 'treinos' ? (
         <SessionList sessions={sessions ?? []} logs={logs ?? []} />
-      ) : (
+      ) : tab === 'evolucao' ? (
         <Progress logs={logs ?? []} />
+      ) : (
+        <Measures />
       )}
     </div>
   )
@@ -98,6 +103,166 @@ function SessionList({ sessions, logs }: { sessions: Session[]; logs: SetLog[] }
         />
       )}
     </div>
+  )
+}
+
+function Measures() {
+  const measures = useLiveQuery(() => db.measures.orderBy('date').reverse().toArray(), [])
+  const [editing, setEditing] = useState<Measure | null>(null)
+  const [toDelete, setToDelete] = useState<Measure | null>(null)
+  const list = measures ?? []
+  const asc = [...list].reverse()
+  const series = (k: 'weight' | 'waist' | 'bodyFat') => asc.filter((m) => m[k] != null).map((m) => m[k] as number)
+  const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR')
+
+  return (
+    <div className="list">
+      <button className="btn btn-block" onClick={() => setEditing({ id: uid(), date: today() })}>
+        + Nova medida
+      </button>
+      {(
+        [
+          ['weight', 'Peso', 'kg'],
+          ['waist', 'Cintura', 'cm'],
+          ['bodyFat', 'Gordura', '%'],
+        ] as const
+      ).map(([k, label, unit]) => {
+        const v = series(k)
+        if (!v.length) return null
+        const diff = Math.round((v[v.length - 1] - v[0]) * 10) / 10
+        return (
+          <div key={k} className="card">
+            <div className="row">
+              <div className="grow">
+                <div className="title">{label}</div>
+                <div className="muted small">
+                  Atual {v[v.length - 1]} {unit}
+                </div>
+              </div>
+              {v.length > 1 && (
+                <div className={`chip ${diff < 0 ? 'chip-accent' : ''}`}>
+                  {diff > 0 ? '+' : ''}
+                  {diff} {unit}
+                </div>
+              )}
+            </div>
+            <Spark values={v} />
+          </div>
+        )
+      })}
+      {list.length === 0 && <div className="card muted">Registre peso, cintura ou % de gordura para acompanhar.</div>}
+      {list.map((m) => (
+        <button key={m.id} className="card row text-left" onClick={() => setEditing(m)}>
+          <div className="grow">
+            <div className="title">{fmtDate(m.date)}</div>
+            <div className="muted small">
+              {[
+                m.weight != null && `${m.weight} kg`,
+                m.waist != null && `cintura ${m.waist} cm`,
+                m.bodyFat != null && `${m.bodyFat}% gordura`,
+              ]
+                .filter(Boolean)
+                .join(' · ') || 'Sem valores'}
+            </div>
+            {m.notes && <div className="muted small">{m.notes}</div>}
+          </div>
+        </button>
+      ))}
+      {editing && (
+        <MeasureSheet
+          measure={editing}
+          isNew={!list.some((m) => m.id === editing.id)}
+          onClose={() => setEditing(null)}
+          onDelete={() => {
+            setToDelete(editing)
+            setEditing(null)
+          }}
+        />
+      )}
+      {toDelete && (
+        <Confirm
+          title="Apagar esta medida?"
+          confirmLabel="Apagar"
+          onCancel={() => setToDelete(null)}
+          onConfirm={async () => {
+            await db.measures.delete(toDelete.id)
+            setToDelete(null)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function MeasureSheet({
+  measure,
+  isNew,
+  onClose,
+  onDelete,
+}: {
+  measure: Measure
+  isNew: boolean
+  onClose: () => void
+  onDelete: () => void
+}) {
+  const [date, setDate] = useState(measure.date)
+  const [weight, setWeight] = useState(measure.weight?.toString() ?? '')
+  const [waist, setWaist] = useState(measure.waist?.toString() ?? '')
+  const [bodyFat, setBodyFat] = useState(measure.bodyFat?.toString() ?? '')
+  const [notes, setNotes] = useState(measure.notes ?? '')
+  const num = (s: string) => {
+    const n = parseFloat(s.replace(',', '.'))
+    return Number.isNaN(n) ? undefined : n
+  }
+  const hasValue = [weight, waist, bodyFat].some((s) => num(s) != null)
+
+  return (
+    <Sheet title={isNew ? 'Nova medida' : 'Editar medida'} onClose={onClose}>
+      <label className="field">
+        <span>Data</span>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>Peso (kg)</span>
+        <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>Cintura (cm)</span>
+        <input inputMode="decimal" value={waist} onChange={(e) => setWaist(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>Gordura corporal (%)</span>
+        <input inputMode="decimal" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} />
+      </label>
+      <label className="field">
+        <span>Anotação</span>
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </label>
+      <div className="actions">
+        {!isNew && (
+          <button className="btn btn-ghost btn-danger" onClick={onDelete}>
+            Apagar
+          </button>
+        )}
+        <button
+          className="btn"
+          disabled={!hasValue || !date}
+          onClick={async () => {
+            await db.measures.put({
+              id: measure.id,
+              date,
+              weight: num(weight),
+              waist: num(waist),
+              bodyFat: num(bodyFat),
+              notes: notes.trim() || undefined,
+            })
+            onClose()
+          }}
+        >
+          Salvar
+        </button>
+      </div>
+    </Sheet>
   )
 }
 

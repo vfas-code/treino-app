@@ -67,6 +67,19 @@ export interface StoredVideo {
   createdAt: number
 }
 
+export interface Measure {
+  id: string
+  /** AAAA-MM-DD */
+  date: string
+  /** Peso em kg */
+  weight?: number
+  /** Cintura em cm */
+  waist?: number
+  /** Gordura corporal em % */
+  bodyFat?: number
+  notes?: string
+}
+
 export interface Setting {
   key: string
   value: unknown

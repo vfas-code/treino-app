@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Plan, Session, SetLog, Setting, StoredVideo } from './types'
+import type { Measure, Plan, Session, SetLog, Setting, StoredVideo } from './types'
 import { seedPlan } from './seed'
 
 export const db = new Dexie('treino-app') as Dexie & {
@@ -8,6 +8,7 @@ export const db = new Dexie('treino-app') as Dexie & {
   logs: EntityTable<SetLog, 'id'>
   videos: EntityTable<StoredVideo, 'id'>
   settings: EntityTable<Setting, 'key'>
+  measures: EntityTable<Measure, 'id'>
 }
 
 db.version(1).stores({
@@ -16,6 +17,11 @@ db.version(1).stores({
   logs: '++id, sessionId, exerciseId, exerciseName, ts',
   videos: 'id, createdAt',
   settings: 'key',
+})
+
+// v2: medidas corporais (peso, cintura, % de gordura)
+db.version(2).stores({
+  measures: 'id, date',
 })
 
 db.on('populate', async (tx) => {
@@ -71,16 +77,27 @@ export async function exportBackup() {
     sessions: await db.sessions.toArray(),
     logs: await db.logs.toArray(),
     settings: await db.settings.toArray(),
+    measures: await db.measures.toArray(),
   }
 }
 
-export async function importBackup(data: Awaited<ReturnType<typeof exportBackup>>) {
+export async function importBackup(
+  data: Omit<Awaited<ReturnType<typeof exportBackup>>, 'measures'> & { measures?: Measure[] },
+) {
   if (data?.app !== 'treino-app') throw new Error('Arquivo não é um backup deste app')
-  await db.transaction('rw', [db.plans, db.sessions, db.logs, db.settings], async () => {
-    await Promise.all([db.plans.clear(), db.sessions.clear(), db.logs.clear(), db.settings.clear()])
+  await db.transaction('rw', [db.plans, db.sessions, db.logs, db.settings, db.measures], async () => {
+    await Promise.all([
+      db.plans.clear(),
+      db.sessions.clear(),
+      db.logs.clear(),
+      db.settings.clear(),
+      db.measures.clear(),
+    ])
     await db.plans.bulkAdd(data.plans)
     await db.sessions.bulkAdd(data.sessions)
     await db.logs.bulkAdd(data.logs)
     await db.settings.bulkAdd(data.settings)
+    // Backups antigos (v1) não têm medidas
+    await db.measures.bulkAdd(data.measures ?? [])
   })
 }
