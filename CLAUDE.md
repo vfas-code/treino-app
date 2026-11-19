@@ -29,3 +29,5 @@ PWA pessoal de treino do Vinicius (uso no iPhone, instalado pelo Safari). Interf
 - Não usar `alert/confirm/prompt`: use `Sheet`/`Confirm` de `src/components/Sheet.tsx`.
 - Inputs com fonte de 16px (evita zoom do iOS); respeitar `env(safe-area-inset-*)`.
 - Vídeos próprios ficam na tabela `videos` (Blob) e não entram no backup JSON.
+- Modo de agenda fica em `settings.scheduleMode` (`agenda` | `sequencia`); sessão pulada tem `skipped: true` e nenhum log.
+- Medidas corporais ficam na tabela `measures` (db v2) e entram no backup.

@@ -15,6 +15,27 @@ export function targetReps(reps: string, setIndex: number): number | undefined {
   return m ? parseInt(m[0], 10) : undefined
 }
 
+/** Meta máxima de repetições: "12/10/8/6" → por série; "12–15" → 15; "12" → 12 */
+export function topReps(reps: string, setIndex: number): number | undefined {
+  const parts = reps.split('/').map((s) => parseInt(s, 10))
+  if (parts.length > 1 && !Number.isNaN(parts[setIndex])) return parts[setIndex]
+  const nums = reps.match(/\d+/g)
+  return nums ? parseInt(nums[nums.length - 1], 10) : undefined
+}
+
+/** Se na última vez todas as séries bateram a meta, sugere subir a carga */
+export function overloadHint(ex: Exercise, prev: SetLog[]): string | null {
+  if (prev.length < ex.sets || ex.method === 'tempo') return null
+  const hitAll = Array.from({ length: ex.sets }, (_, s) => {
+    const l = prev.find((p) => p.setIndex === s)
+    const t = topReps(ex.reps, s)
+    return !!l && l.weight > 0 && t != null && l.reps >= t
+  }).every(Boolean)
+  if (!hitAll) return null
+  const max = Math.max(...prev.map((p) => p.weight))
+  return `Você bateu todas as reps com ${max} kg. Que tal ${max + 2.5} kg hoje?`
+}
+
 export default function WorkoutSession() {
   const { workoutId } = useParams()
   const navigate = useNavigate()
@@ -180,6 +201,9 @@ function ExerciseCard({
         )}
       </div>
       {ex.notes && <div className="note">💡 {ex.notes}</div>}
+      {!done && logs.length === 0 && overloadHint(ex, prev) && (
+        <div className="note note-up">📈 {overloadHint(ex, prev)}</div>
+      )}
       {showVideo && <Video videoUrl={ex.videoUrl} videoId={ex.videoId} />}
 
       <div className="sets">

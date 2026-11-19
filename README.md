@@ -4,12 +4,14 @@ App pessoal de treino (PWA) para iPhone: planos de treino editáveis, vídeo de 
 
 ## Funcionalidades
 
-- **Treino do dia** pela agenda da semana do plano ativo (ex.: segunda = A, terça = B…)
+- **Treino do dia** pela agenda da semana do plano ativo (ex.: segunda = A, terça = B…) ou em **modo sequência**: o app sugere o próximo treino da fila e permite **pular** (Ajustes)
 - **Registro por série**: kg e reps, com a carga da última vez como referência
 - **Timer de descanso** automático depois de cada série (bip + vibração quando disponível)
 - **Vídeos**: link do YouTube (abre embutido) ou vídeo próprio gravado no celular (salvo no aparelho)
 - **Vários planos**: criar, duplicar, editar, reordenar treinos e exercícios, ativar outro plano
 - **Histórico**: treinos feitos, volume, duração e evolução de carga por exercício
+- **Recordes e progressão**: 🏆 em séries com carga recorde, sugestão de subir a carga e 1RM estimado
+- **Medidas corporais** (peso, cintura, % de gordura) com gráfico, e **calendário de frequência**
 - **Backup** em JSON (exportar/importar) em Ajustes
 - Já vem com o plano **PPL ×2 – Perda de gordura** cadastrado
 

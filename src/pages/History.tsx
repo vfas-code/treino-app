@@ -42,6 +42,7 @@ function SessionList({ sessions, logs }: { sessions: Session[]; logs: SetLog[] }
 
   return (
     <div className="list">
+      <Heatmap sessions={sessions} />
       {sessions.map((s) => {
         const sl = logs.filter((l) => l.sessionId === s.id)
         const volume = sl.reduce((v, l) => v + l.weight * l.reps, 0)
@@ -102,6 +103,42 @@ function SessionList({ sessions, logs }: { sessions: Session[]; logs: SetLog[] }
           }}
         />
       )}
+    </div>
+  )
+}
+
+/** Calendário das últimas 12 semanas: um quadrado por dia (colunas = semanas, seg → dom) */
+function Heatmap({ sessions }: { sessions: Session[] }) {
+  const p = (n: number) => String(n).padStart(2, '0')
+  const key = (d: Date) => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  const trained = new Set(sessions.filter((s) => !s.skipped).map((s) => s.date))
+  const skipped = new Set(sessions.filter((s) => s.skipped).map((s) => s.date))
+  const end = new Date()
+  end.setHours(12, 0, 0, 0)
+  // Começa na segunda-feira, 11 semanas antes da semana atual
+  const start = new Date(end)
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7) - 11 * 7)
+  const days = Array.from({ length: 12 * 7 }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    return d
+  })
+  const todayKey = key(end)
+  const total = days.filter((d) => trained.has(key(d))).length
+
+  return (
+    <div className="card">
+      <div className="row">
+        <div className="title grow">Frequência</div>
+        <div className="muted small">{total} treinos em 12 semanas</div>
+      </div>
+      <div className="heatmap" aria-hidden>
+        {days.map((d) => {
+          const k = key(d)
+          const cls = trained.has(k) ? 'hm-on' : skipped.has(k) ? 'hm-skip' : ''
+          return <span key={k} className={`hm ${cls} ${k > todayKey ? 'hm-future' : ''}`} title={k} />
+        })}
+      </div>
     </div>
   )
 }
