@@ -114,7 +114,9 @@ function Progress({ logs }: { logs: SetLog[] }) {
         const first = series[0]?.max ?? 0
         const last = series[series.length - 1]?.max ?? 0
         const best = Math.max(...series.map((s) => s.max))
-        return { name, series, first, last, best, lastTs: series[series.length - 1]?.ts ?? 0 }
+        // 1RM estimado (Epley) usando a melhor série de todas
+        const e1rm = Math.round(Math.max(...ls.map((l) => l.weight * (1 + l.reps / 30))))
+        return { name, series, first, last, best, e1rm, lastTs: series[series.length - 1]?.ts ?? 0 }
       })
       .sort((a, b) => b.lastTs - a.lastTs)
   }, [logs])
@@ -131,7 +133,7 @@ function Progress({ logs }: { logs: SetLog[] }) {
               <div className="grow">
                 <div className="title">{r.name}</div>
                 <div className="muted small">
-                  Recorde {r.best} kg · {r.series.length} {r.series.length === 1 ? 'treino' : 'treinos'}
+                  Recorde {r.best} kg · 1RM est. {r.e1rm} kg · {r.series.length} {r.series.length === 1 ? 'treino' : 'treinos'}
                 </div>
               </div>
               {r.series.length > 1 && (

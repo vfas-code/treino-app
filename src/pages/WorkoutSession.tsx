@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { hasVideo, Video } from '../components/Video'
 import { useRestTimer } from '../components/RestTimer'
-import { db, lastLogsFor, today, uid } from '../db'
+import { bestWeightFor, db, lastLogsFor, today, uid } from '../db'
 import { useActivePlan } from '../hooks'
 import { METHOD_LABEL, type Exercise, type SetLog, type Workout } from '../types'
 
@@ -34,6 +34,25 @@ export default function WorkoutSession() {
     async () => (sessionId ? db.logs.where('sessionId').equals(sessionId).toArray() : []),
     [sessionId],
   )
+
+  // Mantém a tela acesa durante o treino (quando o navegador permite)
+  useEffect(() => {
+    let lock: WakeLockSentinel | null = null
+    const request = async () => {
+      try {
+        lock = (await navigator.wakeLock?.request('screen')) ?? null
+      } catch {
+        lock = null
+      }
+    }
+    void request()
+    const onVisible = () => document.visibilityState === 'visible' && void request()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      void lock?.release()
+    }
+  }, [])
 
   if (loading || existing === undefined) return <div className="page">Carregando…</div>
   if (!plan || !workout)
@@ -135,11 +154,13 @@ function ExerciseCard({
 }) {
   const [showVideo, setShowVideo] = useState(false)
   const [prev, setPrev] = useState<SetLog[]>([])
+  const [best, setBest] = useState(0)
   const timer = useRestTimer()
   const done = logs.length >= ex.sets
 
   useEffect(() => {
     lastLogsFor(ex.id, ex.name, sessionId ?? undefined).then(setPrev)
+    bestWeightFor(ex.id, ex.name, sessionId ?? undefined).then(setBest)
   }, [ex.id, ex.name, sessionId])
 
   return (
@@ -176,6 +197,7 @@ function ExerciseCard({
             ex={ex}
             log={logs.find((l) => l.setIndex === s)}
             prev={prev.find((l) => l.setIndex === s)}
+            best={best}
             onSave={async (weight, reps) => {
               const sid = await ensureSession()
               await db.logs.add({
@@ -201,12 +223,15 @@ function SetRow({
   ex,
   log,
   prev,
+  best,
   onSave,
 }: {
   setIndex: number
   ex: Exercise
   log?: SetLog
   prev?: SetLog
+  /** Maior carga de sessões anteriores (para marcar recorde) */
+  best: number
   onSave: (weight: number, reps: number) => Promise<void>
 }) {
   const target = targetReps(ex.reps, setIndex)
@@ -233,7 +258,10 @@ function SetRow({
       <span className="muted small">{prev ? `${prev.weight}kg × ${prev.reps}` : '—'}</span>
       {log ? (
         <>
-          <span className="set-val">{log.weight}</span>
+          <span className="set-val">
+            {best > 0 && log.weight > best ? '🏆 ' : ''}
+            {log.weight}
+          </span>
           <span className="set-val">{log.reps}</span>
           <button className="check checked" onClick={undo} aria-label="Desfazer série">
             ✓

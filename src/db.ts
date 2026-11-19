@@ -54,6 +54,13 @@ export async function lastLogsFor(exerciseId: string, exerciseName: string, excl
   return prev.filter((l) => l.sessionId === sid).sort((a, b) => a.setIndex - b.setIndex)
 }
 
+/** Maior carga já registrada num exercício, ignorando a sessão atual */
+export async function bestWeightFor(exerciseId: string, exerciseName: string, excludeSession?: string) {
+  let pool = await db.logs.where('exerciseId').equals(exerciseId).toArray()
+  if (!pool.length) pool = await db.logs.where('exerciseName').equals(exerciseName).toArray()
+  return pool.filter((l) => l.sessionId !== excludeSession).reduce((m, l) => Math.max(m, l.weight), 0)
+}
+
 /** Backup completo (sem os vídeos próprios, que ficam só no aparelho) */
 export async function exportBackup() {
   return {

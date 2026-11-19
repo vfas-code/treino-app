@@ -24,6 +24,20 @@ export default function Home() {
     [planId],
   )
   const [confirmSkip, setConfirmSkip] = useState(false)
+  // Resumo da semana (segunda a domingo)
+  const week = useLiveQuery(async () => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    const from = d.getTime()
+    const sessions = (await db.sessions.where('startedAt').aboveOrEqual(from).toArray()).filter((s) => !s.skipped)
+    const logs = await db.logs.where('ts').aboveOrEqual(from).toArray()
+    return {
+      workouts: sessions.length,
+      sets: logs.length,
+      volume: Math.round(logs.reduce((v, l) => v + l.weight * l.reps, 0)),
+    }
+  }, [])
 
   if (loading || mode === undefined || last === undefined) return <div className="page">Carregando…</div>
   if (!plan)
@@ -114,6 +128,19 @@ export default function Home() {
           <div className="eyebrow">Hoje</div>
           <div className="hero-title">Descanso 😴</div>
           <div className="muted">Escolha um treino abaixo se quiser treinar mesmo assim.</div>
+        </div>
+      )}
+
+      {week && week.workouts > 0 && (
+        <div className="card row">
+          <div className="grow">
+            <div className="title">Esta semana</div>
+            <div className="muted small">
+              {week.workouts} {week.workouts === 1 ? 'treino' : 'treinos'} · {week.sets} séries ·{' '}
+              {week.volume.toLocaleString('pt-BR')} kg
+            </div>
+          </div>
+          <div className="chip chip-accent">🔥 {week.workouts}</div>
         </div>
       )}
 
