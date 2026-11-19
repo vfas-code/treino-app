@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Confirm } from '../components/Sheet'
 import { db, exportBackup, importBackup, setSetting, today } from '../db'
+import { useScheduleMode } from '../hooks'
 import { seedPlan } from '../seed'
 
 export default function Settings() {
   const [msg, setMsg] = useState<string | null>(null)
   const [confirmSeed, setConfirmSeed] = useState(false)
+  const mode = useScheduleMode()
 
   const doExport = async () => {
     const data = await exportBackup()
@@ -41,6 +43,23 @@ export default function Settings() {
   return (
     <div className="page">
       <h1>Ajustes</h1>
+
+      <h2>Qual treino aparece hoje</h2>
+      <div className="card">
+        <div className="tabs">
+          <button className={mode === 'agenda' ? 'active' : ''} onClick={() => setSetting('scheduleMode', 'agenda')}>
+            Agenda por dia
+          </button>
+          <button className={mode === 'sequencia' ? 'active' : ''} onClick={() => setSetting('scheduleMode', 'sequencia')}>
+            Sequência
+          </button>
+        </div>
+        <p className="muted small">
+          {mode === 'sequencia'
+            ? 'O app sugere o treino seguinte ao último que você fez ou pulou (A → B → C → A…). Se faltar, o treino da vez continua na fila; use "Pular" na tela inicial para avançar.'
+            : 'O treino de hoje segue a agenda da semana definida no plano (ex.: segunda = A).'}
+        </p>
+      </div>
 
       <h2>Backup</h2>
       <div className="card">

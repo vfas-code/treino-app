@@ -25,7 +25,7 @@ export default function WorkoutSession() {
   const existing = useLiveQuery(
     async () =>
       workoutId
-        ? (await db.sessions.where('date').equals(today()).toArray()).find((s) => s.workoutId === workoutId) ?? null
+        ? (await db.sessions.where('date').equals(today()).toArray()).find((s) => s.workoutId === workoutId && !s.skipped) ?? null
         : null,
     [workoutId],
   )

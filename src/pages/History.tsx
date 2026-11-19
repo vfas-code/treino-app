@@ -50,8 +50,14 @@ function SessionList({ sessions, logs }: { sessions: Session[]; logs: SetLog[] }
                 <div className="muted small">
                   {new Date(s.startedAt).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                   {' · '}
-                  {sl.length} séries · {Math.round(volume).toLocaleString('pt-BR')} kg
-                  {mins != null ? ` · ${mins} min` : ' · em andamento'}
+                  {s.skipped ? (
+                    '⏭ Pulado'
+                  ) : (
+                    <>
+                      {sl.length} séries · {Math.round(volume).toLocaleString('pt-BR')} kg
+                      {mins != null ? ` · ${mins} min` : ' · em andamento'}
+                    </>
+                  )}
                 </div>
               </div>
               <span>{open === s.id ? '▾' : '▸'}</span>
@@ -70,7 +76,7 @@ function SessionList({ sessions, logs }: { sessions: Session[]; logs: SetLog[] }
                   </div>
                 ))}
                 <button className="btn btn-ghost btn-sm btn-danger" onClick={() => setToDelete(s)}>
-                  Apagar este treino
+                  {s.skipped ? 'Desfazer o pulo' : 'Apagar este treino'}
                 </button>
               </div>
             )}

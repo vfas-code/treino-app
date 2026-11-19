@@ -55,6 +55,8 @@ export interface Session {
   date: string
   startedAt: number
   finishedAt?: number
+  /** Treino marcado como pulado (não tem séries; só avança a sequência) */
+  skipped?: boolean
 }
 
 export interface StoredVideo {

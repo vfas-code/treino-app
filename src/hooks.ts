@@ -20,3 +20,13 @@ export function usePlan(planId?: string) {
 
 export const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 export const WEEKDAYS_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+export type ScheduleMode = 'agenda' | 'sequencia'
+
+/** 'agenda' = treino fixo por dia da semana; 'sequencia' = próximo treino da fila */
+export function useScheduleMode(): ScheduleMode | undefined {
+  return useLiveQuery(async () => {
+    const s = await db.settings.get('scheduleMode')
+    return s?.value === 'sequencia' ? 'sequencia' : 'agenda'
+  }, [])
+}
